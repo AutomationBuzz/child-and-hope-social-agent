@@ -1,7 +1,8 @@
-"""Pipeline agent: validate configuration, then run the existing content agent.
+"""Pipeline agent: maintenance diagnostics, preflight, then content workflow.
 
-This orchestrates the pipeline locally in GitHub Actions. It never prints secret values.
-Live Facebook publication remains governed by AUTO_PUBLISH and the agent's approval/hash gates.
+Diagnostics run first on every trigger and write troubleshooting_report.md.
+Secret values are never printed. Missing credentials cannot be repaired by code;
+the workflow reports the exact GitHub setting that needs administrator action.
 """
 import os
 import subprocess
@@ -21,6 +22,7 @@ def run_step(label: str, command: list[str]) -> None:
 def main() -> int:
     print("CHILD & HOPE Pipeline Agent starting.", flush=True)
     print(f"Trigger: {os.getenv('GITHUB_EVENT_NAME', 'local/manual')}", flush=True)
+    run_step("maintenance / troubleshooting diagnostics", [sys.executable, "src/troubleshoot.py"])
     run_step("configuration preflight", [sys.executable, "src/validate_config.py"])
     run_step("generate draft / publish only through existing safety gates", [sys.executable, "src/agent.py"])
     print("\nPipeline Agent completed successfully.", flush=True)
