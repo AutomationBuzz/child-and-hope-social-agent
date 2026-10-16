@@ -1,0 +1,44 @@
+name: CHILD & HOPE Setup Agent
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: child-hope-setup-validation
+  cancel-in-progress: false
+
+jobs:
+  verify-credentials:
+    runs-on: ubuntu-latest
+    environment: facebook-production
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate OpenAI and Facebook credentials
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          EXPECTED_FB_PAGE_ID: ${{ vars.EXPECTED_FB_PAGE_ID }}
+        run: python src/setup_agent.py
+
+      - name: Upload setup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-and-hope-setup-report
+          path: setup_agent_report.md
+          if-no-files-found: ignore
+          retention-days: 7
