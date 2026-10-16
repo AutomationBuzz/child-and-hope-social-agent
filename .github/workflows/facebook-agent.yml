@@ -1,4 +1,4 @@
-name: CHILD & HOPE Pipeline Agent
+name: CHILD & HOPE Agentic Facebook Workflow
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
       - "requirements.txt"
       - ".github/workflows/facebook-agent.yml"
   schedule:
-    - cron: "0 14 * * *" # daily at 14:00 UTC until the 48-hour campaign window is configured
+    - cron: "0 14 * * *" # daily at 14:00 UTC; publishing still requires explicit gates
 
 permissions:
   contents: read
@@ -20,10 +20,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  pipeline-agent:
+  child-hope-orchestrator:
     runs-on: ubuntu-latest
     environment: facebook-production
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
       - name: Syntax check
         run: python -m compileall -q src
 
-      - name: Run pipeline agent
+      - name: Run single Agentic AI orchestrator
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
@@ -48,15 +48,17 @@ jobs:
           EXPECTED_FB_PAGE_ID: ${{ vars.EXPECTED_FB_PAGE_ID }}
           AUTO_PUBLISH: ${{ vars.AUTO_PUBLISH }}
           APPROVED_CONTENT_SHA256: ${{ vars.APPROVED_CONTENT_SHA256 }}
-        run: python src/pipeline_agent.py
+        run: python src/orchestrator_agent.py
 
-      - name: Upload diagnostics and draft
+      - name: Upload reports and draft
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: child-and-hope-diagnostics-and-draft
+          name: child-and-hope-agentic-run-report
           path: |
+            orchestrator_report.md
+            setup_agent_report.md
             troubleshooting_report.md
             draft_caption.txt
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14
