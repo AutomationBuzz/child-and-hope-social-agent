@@ -2,6 +2,12 @@ name: CHILD & HOPE Setup Agent
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/setup_agent.py"
+      - ".github/workflows/setup-agent.yml"
+      - "requirements.txt"
 
 permissions:
   contents: read
