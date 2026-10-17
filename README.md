@@ -41,6 +41,18 @@ The **CHILD & HOPE - Research Reel Draft** workflow runs manually or weekly on M
 
 Use the Reel CTA to invite people to follow the page, share trusted research, or message the official CHILD & HOPE Page for general information. Do not scrape personal profiles, buy contact lists, target people based on inferred illness, or solicit children's medical details. If running campaigns on other Pages, use only Pages you own or are authorized to manage, with each Page's own approved token and explicit destination allowlist. The current Reel workflow does not publish across multiple Pages or collect leads; those integrations require authorized Page IDs/tokens and a clear privacy notice.
 
+
+
+### Publish a reviewed research Reel
+
+1. Run [Research Reel Draft](https://github.com/AutomationBuzz/child-and-hope-social-agent/actions/workflows/research-reel-agent.yml) and download the `child-hope-research-reel-draft` artifact.
+2. Watch the MP4, check the source article and limitation in `reel_review_report.md`, and review the caption and hashtags in `reel_caption_hashtags.txt`.
+3. Copy the numeric run ID from the completed Reel-draft workflow URL.
+4. Open [Publish Reviewed Research Reel](https://github.com/AutomationBuzz/child-and-hope-social-agent/actions/workflows/publish-research-reel.yml), click **Run workflow**, enter the run ID, and choose `yes` only after approving the exact Reel.
+5. Check the publication receipt and Facebook Page. Do not run the publisher twice for the same run ID; durable cross-run duplicate protection is not yet implemented.
+
+The Reel publisher uses the Page token in the `facebook-production` environment and verifies the expected Page ID before uploading. The current configuration targets only the known CHILD & HOPE Page (`1345909531941708`). To publish on other Pages, each must be explicitly authorized, added to an allowlist, and configured with its own Page ID and Page access token secret; do not reuse a token for a different Page.
+
 ## One-time secure setup for Facebook publishing
 
 In GitHub **Settings → Environments → facebook-production**, add Environment secrets:
