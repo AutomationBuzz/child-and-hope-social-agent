@@ -1,0 +1,48 @@
+name: CHILD & HOPE - Research Reel Draft
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 15 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: child-hope-research-reel
+  cancel-in-progress: false
+
+jobs:
+  create-reel-draft:
+    runs-on: ubuntu-latest
+    environment: facebook-production
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Create research Reel draft
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+          RESEARCH_DAYS_BACK: "30"
+          RESEARCH_MAX_RECORDS: "12"
+        run: python src/research_reel_agent.py
+      - name: Upload Reel draft and review materials
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-hope-research-reel-draft
+          path: |
+            artifacts/child_hope_early_cancer_research_reel.mp4
+            artifacts/reel_caption_hashtags.txt
+            artifacts/reel_storyboard.json
+            artifacts/reel_review_report.md
+          if-no-files-found: error
+          retention-days: 30
