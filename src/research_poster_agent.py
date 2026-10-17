@@ -167,7 +167,7 @@ def record_used_study(data: dict, content_type: str) -> None:
         "used_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     })
     HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    HISTORY_PATH.write_text(json.dumps(history, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")
+    HISTORY_PATH.write_text(json.dumps(history, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def choose_and_summarize(records: list[dict]) -> dict:
