@@ -28,6 +28,19 @@ The workflow also runs weekly on Fridays at 14:00 UTC. It considers PubMed recor
 
 This separate workflow uses the `FB_PAGE_ACCESS_TOKEN` secret in the `facebook-production` environment and verifies the Page ID before publishing. Do not run the publisher twice for the same research run ID: a durable cross-run duplicate ledger has not yet been implemented. The publishing workflow is manual-only; the weekly research workflow never publishes automatically.
 
+## Research Reel agent
+
+The **CHILD & HOPE - Research Reel Draft** workflow runs manually or weekly on Mondays at 15:00 UTC. It uses recent PubMed research to create a silent vertical 1080×1920 MP4 Reel draft (about 25 seconds), storyboard, source-linked review report, caption, and hashtags.
+
+1. Open [Actions → Research Reel Draft](https://github.com/AutomationBuzz/child-and-hope-social-agent/actions/workflows/research-reel-agent.yml).
+2. Click **Run workflow**.
+3. Download the `child-hope-research-reel-draft` artifact and review the MP4, `reel_review_report.md`, and `reel_caption_hashtags.txt`.
+4. Approve it before any public posting. This workflow creates drafts only; it does not publish to Facebook.
+
+### Ethical reach and lead generation
+
+Use the Reel CTA to invite people to follow the page, share trusted research, or message the official CHILD & HOPE Page for general information. Do not scrape personal profiles, buy contact lists, target people based on inferred illness, or solicit children's medical details. If running campaigns on other Pages, use only Pages you own or are authorized to manage, with each Page's own approved token and explicit destination allowlist. The current Reel workflow does not publish across multiple Pages or collect leads; those integrations require authorized Page IDs/tokens and a clear privacy notice.
+
 ## One-time secure setup for Facebook publishing
 
 In GitHub **Settings → Environments → facebook-production**, add Environment secrets:
