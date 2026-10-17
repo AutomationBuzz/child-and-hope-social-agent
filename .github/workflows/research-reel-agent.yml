@@ -34,7 +34,7 @@ jobs:
           RESEARCH_DAYS_BACK: "30"
           RESEARCH_MAX_RECORDS: "12"
         run: python src/research_reel_agent.py
-      - name: Upload Reel draft and review materials
+      - name: Commit research deduplication history\n        if: success()\n        uses: stefanzweifel/git-auto-commit-action@v5\n        with:\n          commit_message: "Track research source used by Reel agent"\n          file_pattern: data/research_history.json\n\n      - name: Upload Reel draft and review materials
         if: success()
         uses: actions/upload-artifact@v4
         with:
