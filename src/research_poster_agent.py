@@ -26,6 +26,8 @@ USER_AGENT = "CHILD-AND-HOPE-ResearchPosterAgent/1.0 (educational use)"
 DAYS_BACK = int(os.getenv("RESEARCH_DAYS_BACK", "30"))
 MAX_RECORDS = int(os.getenv("RESEARCH_MAX_RECORDS", "12"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+HISTORY_PATH = ROOT / "data" / "research_history.json"
+
 SEARCH_TERM = (
     '("Childhood Neoplasms"[Mesh] OR childhood cancer[Title/Abstract] '
     'OR pediatric cancer[Title/Abstract] OR paediatric cancer[Title/Abstract]) '
@@ -108,6 +110,64 @@ def pubmed_search() -> list[dict]:
             "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "",
         })
     return [r for r in records if r["title"] and r["abstract"]]
+
+
+
+def load_research_history() -> dict:
+    """Read the committed cross-run ledger so poster and Reel jobs share deduplication."""
+    if not HISTORY_PATH.exists():
+        return {"used_studies": []}
+    try:
+        payload = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+        if not isinstance(payload.get("used_studies"), list):
+            raise ValueError("used_studies must be a list")
+        return payload
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        raise RuntimeError(f"Research history is unreadable; refusing to risk a duplicate: {exc}") from exc
+
+
+def filter_unused_records(records: list[dict]) -> list[dict]:
+    history = load_research_history()
+    used = set()
+    for item in history["used_studies"]:
+        if item.get("pmid"):
+            used.add(str(item["pmid"]))
+        if item.get("doi"):
+            used.add("doi:" + str(item["doi"]).lower())
+        if item.get("url"):
+            used.add("url:" + str(item["url"]).rstrip("/").lower())
+    return [
+        record for record in records
+        if str(record.get("pmid", "")) not in used
+        and (not record.get("doi") or "doi:" + str(record["doi"]).lower() not in used)
+        and (not record.get("url") or "url:" + str(record["url"]).rstrip("/").lower() not in used)
+    ]
+
+
+def record_used_study(data: dict, content_type: str) -> None:
+    """Persist a selected source; GitHub Actions commits this ledger after successful draft creation."""
+    history = load_research_history()
+    pmid = str(data.get("pmid", "")).strip()
+    doi = str(data.get("doi", "")).strip()
+    url = str(data.get("source_url", "")).strip()
+    used = history["used_studies"]
+    if any(
+        (pmid and str(item.get("pmid", "")) == pmid)
+        or (doi and str(item.get("doi", "")).lower() == doi.lower())
+        or (url and str(item.get("url", "")).rstrip("/").lower() == url.rstrip("/").lower())
+        for item in used
+    ):
+        raise RuntimeError("Duplicate research source detected in history; refusing to create a repeat post.")
+    used.append({
+        "pmid": pmid,
+        "doi": doi,
+        "url": url,
+        "title": str(data.get("title", "")),
+        "content_type": content_type,
+        "used_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    })
+    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_PATH.write_text(json.dumps(history, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")
 
 
 def choose_and_summarize(records: list[dict]) -> dict:
@@ -242,8 +302,12 @@ def create_poster(data: dict) -> Path:
 def main() -> int:
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required as a GitHub Actions secret.")
-    records = pubmed_search()
+    found_records = pubmed_search()
+    records = filter_unused_records(found_records)
+    if not records:
+        raise RuntimeError("No unused eligible PubMed studies found. Expand the search window/query; no duplicate poster will be generated.")
     data = choose_and_summarize(records)
+    record_used_study(data, "poster")
     poster = create_poster(data)
     caption = (
         f'{data["headline"]}\n\n{data["caption"]}\n\n'
@@ -257,7 +321,7 @@ def main() -> int:
         "",
         f'- Generated (UTC): {datetime.now(timezone.utc).isoformat(timespec="seconds")}',
         f"- Search window: last {DAYS_BACK} days",
-        f"- PubMed records with abstracts considered: {len(records)}",
+        f"- New, unused PubMed records with abstracts considered: {len(records)}",
         "- Status: DRAFT — human review required; not published to Facebook",
         "",
         f'## {data["title"]}',
