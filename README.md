@@ -25,7 +25,7 @@ In GitHub **Settings → Environments → facebook-production**, add Environment
 - `FB_PAGE_ACCESS_TOKEN` (a Facebook **Page** access token)
 
 Add environment variables:
-- `EXPECTED_FB_PAGE_ID=61595341701921`
+- `EXPECTED_FB_PAGE_ID=1345909531941708`
 - `OPENAI_MODEL=gpt-4.1-mini` (optional)
 - `AUTO_PUBLISH=false` initially
 - `APPROVED_CONTENT_SHA256` only when configuring a reviewed caption for publication
