@@ -1,3 +1,12 @@
 {
-  "used_studies": []
+  "used_studies": [
+    {
+      "pmid": "42720566",
+      "doi": "10.1002/1545-5017.70670",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42720566/",
+      "title": "A Situational Assessment of the Diagnostic Landscape and Organizational Readiness to Implement Next-Generation Sequencing at Two Childhood Cancer Treatment Centers in Ghana.",
+      "content_type": "reel",
+      "used_at_utc": "2026-10-17T06:39:59+00:00"
+    }
+  ]
 }
