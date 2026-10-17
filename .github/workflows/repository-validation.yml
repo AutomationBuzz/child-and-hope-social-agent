@@ -1,0 +1,74 @@
+name: CHILD & HOPE - Repository Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: child-hope-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies and YAML validator
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt PyYAML
+
+      - name: Validate Python syntax
+        run: python -m compileall -q src
+
+      - name: Validate JSON data files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path("data").glob("*.json"):
+              json.loads(path.read_text(encoding="utf-8"))
+              print(f"Valid JSON: {path}")
+          PY
+
+      - name: Validate GitHub Actions YAML syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          paths = sorted(Path(".github/workflows").glob("*.yml")) + sorted(Path(".github/workflows").glob("*.yaml"))
+          if not paths:
+              raise SystemExit("No workflow YAML files found.")
+          for path in paths:
+              with path.open(encoding="utf-8") as handle:
+                  yaml.safe_load(handle)
+              print(f"Valid workflow YAML: {path}")
+          PY
+
+      - name: Check research history schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("data/research_history.json")
+          if path.exists():
+              data = json.loads(path.read_text(encoding="utf-8"))
+              if not isinstance(data.get("used_studies"), list):
+                  raise SystemExit("data/research_history.json must contain a used_studies list.")
+          print("Research history schema OK.")
+          PY
