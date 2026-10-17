@@ -38,7 +38,7 @@ jobs:
           RESEARCH_MAX_RECORDS: "12"
         run: python src/research_poster_agent.py
 
-      - name: Upload poster and evidence report
+      - name: Commit research deduplication history\n        if: success()\n        uses: stefanzweifel/git-auto-commit-action@v5\n        with:\n          commit_message: "Track research source used by poster agent"\n          file_pattern: data/research_history.json\n\n      - name: Upload poster and evidence report
         if: success()
         uses: actions/upload-artifact@v4
         with:
