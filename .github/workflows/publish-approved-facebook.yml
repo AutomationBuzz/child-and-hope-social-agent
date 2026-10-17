@@ -1,0 +1,72 @@
+name: CHILD & HOPE - Publish Approved Facebook Post
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_publish:
+        description: "Choose yes only when you intend to publish the approved caption to the CHILD & HOPE Facebook Page."
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: child-hope-facebook-publish
+  cancel-in-progress: false
+
+jobs:
+  publish-approved-post:
+    if: ${{ inputs.confirm_publish == 'yes' }}
+    runs-on: ubuntu-latest
+    environment: facebook-production
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q src
+
+      - name: Validate and publish approved caption
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          OPENAI_MODEL: "gpt-4.1-mini"
+          EXPECTED_FB_PAGE_ID: "1345909531941708"
+          AUTO_PUBLISH: "true"
+          APPROVED_CONTENT_SHA256: ${{ vars.APPROVED_CONTENT_SHA256 }}
+        run: python src/orchestrator_agent.py
+
+      - name: Upload publication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-and-hope-facebook-publication-report
+          path: |
+            orchestrator_report.md
+            setup_agent_report.md
+            troubleshooting_report.md
+            draft_caption.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  skipped-without-confirmation:
+    if: ${{ inputs.confirm_publish != 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep publication disabled
+        run: echo "Publication was not confirmed. No Facebook post was published."
