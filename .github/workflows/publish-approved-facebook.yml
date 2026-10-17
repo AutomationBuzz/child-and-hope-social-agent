@@ -61,6 +61,7 @@ jobs:
             setup_agent_report.md
             troubleshooting_report.md
             draft_caption.txt
+            facebook_publish_report.md
           if-no-files-found: ignore
           retention-days: 14
 
