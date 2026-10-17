@@ -1,0 +1,50 @@
+name: CHILD & HOPE - Research to Poster
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: child-hope-research-poster
+  cancel-in-progress: false
+
+jobs:
+  research-and-create-poster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create research poster draft
+        env:
+          OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: \${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+          RESEARCH_DAYS_BACK: "30"
+          RESEARCH_MAX_RECORDS: "12"
+        run: python src/research_poster_agent.py
+
+      - name: Upload poster and evidence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-hope-research-poster-draft
+          path: |
+            artifacts/child_hope_research_poster.png
+            artifacts/research_summary.md
+            artifacts/poster_caption.txt
+          if-no-files-found: error
+          retention-days: 30
