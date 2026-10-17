@@ -31,8 +31,8 @@ jobs:
 
       - name: Create research poster draft
         env:
-          OPENAI_API_KEY: \${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: \${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
           RESEARCH_DAYS_BACK: "30"
           RESEARCH_MAX_RECORDS: "12"
         run: python src/research_poster_agent.py
