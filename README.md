@@ -16,7 +16,17 @@ The separate **CHILD & HOPE - Research to Poster** workflow searches recent PubM
    - `poster_caption.txt`
 4. Review the cited article and every claim before sharing.
 
-The workflow also runs weekly on Fridays at 14:00 UTC. It considers PubMed records published in the last 30 days by default. It uses the official API rather than scraping journal website HTML. The poster agent does **not** publish to Facebook. It needs the existing `OPENAI_API_KEY` repository or environment secret; it does not need the Facebook Page token. If no suitable recent abstract is found, the run fails rather than inventing research.
+The workflow also runs weekly on Fridays at 14:00 UTC. It considers PubMed records published in the last 30 days by default. It uses the official API rather than scraping journal website HTML. The research workflow creates a draft only. It needs the existing `OPENAI_API_KEY` secret; it does not need the Facebook Page token. If no suitable recent abstract is found, the run fails rather than inventing research.
+
+### Publish a reviewed poster to Facebook
+
+1. Run the Research to Poster workflow and download the artifact. Review `research_summary.md`, open the PubMed source, and inspect the poster image and caption.
+2. Copy the numeric **run ID** from that completed research workflow run's URL.
+3. Open [Actions → Publish Reviewed Research Poster](https://github.com/AutomationBuzz/child-and-hope-social-agent/actions/workflows/publish-research-poster.yml).
+4. Click **Run workflow**, enter the research workflow run ID, and choose `yes` only after you have reviewed and approved that exact artifact.
+5. Inspect the result and download the `child-hope-research-poster-publication-receipt` artifact. A successful run should include a Facebook post/photo ID and, when available, a permalink.
+
+This separate workflow uses the `FB_PAGE_ACCESS_TOKEN` secret in the `facebook-production` environment and verifies the Page ID before publishing. Do not run the publisher twice for the same research run ID: a durable cross-run duplicate ledger has not yet been implemented. The publishing workflow is manual-only; the weekly research workflow never publishes automatically.
 
 ## One-time secure setup for Facebook publishing
 
