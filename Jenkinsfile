@@ -7,6 +7,9 @@ pipeline {
     disableConcurrentBuilds()
     buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '20'))
   }
+  parameters {
+    booleanParam(name: 'GENERATE_RESEARCH_DRAFTS', defaultValue: true, description: 'Run research and creative agents automatically')
+  }
   triggers {
     cron('H 14 * * 1,5')
   }
@@ -81,10 +84,10 @@ PY
   }
   post {
     success {
-      echo 'CHILD & HOPE pipeline passed. Draft generation is optional and publication is not triggered by this Jenkinsfile.'
+      echo 'CHILD & HOPE pipeline passed. Research/creative agents ran when enabled; Facebook publishing remains disabled until its idempotency and end-to-end verification gates are implemented.'
     }
     failure {
-      echo 'Pipeline failed. Inspect stage logs and archived artifacts before applying a fix; do not blindly retry external publishing.'
+      echo 'Pipeline failed. Preserve logs and artifacts for diagnosis. Only retry safe draft-generation operations; never blindly retry a Facebook publish request.'
     }
     always {
       cleanWs(deleteDirs: true, notFailBuild: true)
