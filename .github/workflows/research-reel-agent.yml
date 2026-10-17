@@ -6,35 +6,57 @@ on:
     - cron: "0 15 * * 1"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: child-hope-research-reel
+  group: child-hope-research-ledger
   cancel-in-progress: false
 
 jobs:
   create-reel-draft:
     runs-on: ubuntu-latest
     environment: facebook-production
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+      - name: Validate required configuration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY is missing from the facebook-production environment."
+            exit 1
+          fi
+
       - name: Create research Reel draft
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
-          RESEARCH_DAYS_BACK: "30"
-          RESEARCH_MAX_RECORDS: "12"
+          RESEARCH_DAYS_BACK: "365"
+          RESEARCH_MAX_RECORDS: "50"
         run: python src/research_reel_agent.py
-      - name: Commit research deduplication history\n        if: success()\n        uses: stefanzweifel/git-auto-commit-action@v5\n        with:\n          commit_message: "Track research source used by Reel agent"\n          file_pattern: data/research_history.json\n\n      - name: Upload Reel draft and review materials
+
+      - name: Commit research deduplication history
+        if: success()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Track research source used by Reel agent"
+          file_pattern: data/research_history.json
+
+      - name: Upload Reel draft and review materials
         if: success()
         uses: actions/upload-artifact@v4
         with:
