@@ -17,7 +17,7 @@ import imageio_ffmpeg
 from PIL import Image, ImageDraw, ImageFont
 from openai import OpenAI
 
-from research_poster_agent import choose_and_summarize, pubmed_search
+from research_poster_agent import choose_and_summarize, filter_unused_records, record_used_study, pubmed_search
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts"
@@ -160,8 +160,12 @@ def render_mp4(storyboard: dict) -> Path:
 def main() -> int:
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required.")
-    records = pubmed_search()
+    found_records = pubmed_search()
+    records = filter_unused_records(found_records)
+    if not records:
+        raise RuntimeError("No unused eligible PubMed studies found. Expand the search window/query; no duplicate Reel will be generated.")
     research = choose_and_summarize(records)
+    record_used_study(research, "reel")
     storyboard = create_storyboard(research)
     video = render_mp4(storyboard)
     tags = " ".join(storyboard.get("hashtags", []))
