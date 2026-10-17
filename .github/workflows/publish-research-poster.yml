@@ -4,16 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       research_run_id:
-        description: "Run ID of the reviewed Research to Poster workflow artifact"
-        required: true
+        description: "Optional run ID of a reviewed Research to Poster draft. Leave blank to use the latest successful draft."
+        required: false
         type: string
       confirm_publish:
-        description: "Choose yes only after reviewing the poster and its source report"
+        description: "Choose yes only after reviewing the poster and source report"
         required: true
         type: choice
-        options:
-          - "no"
-          - "yes"
+        options: ["no", "yes"]
         default: "no"
 
 permissions:
@@ -33,26 +31,63 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Resolve and validate poster artifact run
+        id: source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED_RUN_ID: ${{ inputs.research_run_id }}
+        run: |
+          set -euo pipefail
+          artifact_name="child-hope-research-poster-draft"
+          if [ -n "$REQUESTED_RUN_ID" ]; then
+            run_id="$REQUESTED_RUN_ID"
+            if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.path == ".github/workflows/research-poster-agent.yml" and .conclusion == "success"' | grep -qx true; then
+              echo "::error::Run $run_id is not a successful Research to Poster workflow run."
+              exit 1
+            fi
+            if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq --arg name "$artifact_name" '[.artifacts[] | select(.name == $name and .expired == false)] | length' | grep -Eq '^[1-9][0-9]*$'; then
+              echo "::error::Run $run_id has no available '$artifact_name' artifact. Use the successful draft run ID, not a job ID or publisher run ID."
+              exit 1
+            fi
+          else
+            run_id=""
+            for candidate in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/research-poster-agent.yml/runs?status=success&per_page=20" --jq '.workflow_runs[].id'); do
+              count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$candidate/artifacts" --jq --arg name "$artifact_name" '[.artifacts[] | select(.name == $name and .expired == false)] | length')
+              if [ "$count" -gt 0 ]; then run_id="$candidate"; break; fi
+            done
+            if [ -z "$run_id" ]; then
+              echo "::error::No successful poster draft with an unexpired artifact was found."
+              exit 1
+            fi
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Using reviewed poster artifact from draft run $run_id"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt
+
       - name: Download reviewed poster artifact
         uses: actions/download-artifact@v4
         with:
           name: child-hope-research-poster-draft
-          run-id: ${{ inputs.research_run_id }}
+          run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: downloaded-artifact
+
       - name: Publish reviewed poster to Facebook
         env:
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
           EXPECTED_FB_PAGE_ID: "1345909531941708"
           FB_GRAPH_VERSION: "v23.0"
         run: python src/publish_research_poster.py
+
       - name: Upload publication receipt
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,9 +96,10 @@ jobs:
           path: facebook_research_poster_receipt.md
           if-no-files-found: ignore
           retention-days: 90
+
   skipped-without-confirmation:
     if: ${{ inputs.confirm_publish != 'yes' }}
     runs-on: ubuntu-latest
     steps:
       - name: Keep publication disabled
-        run: echo "Publication was not confirmed. No Facebook post was published."
+        run: echo "Publication was not confirmed. No Facebook post was published. To publish, review the draft and explicitly select yes."
