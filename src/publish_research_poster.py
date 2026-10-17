@@ -9,8 +9,8 @@ GRAPH_VERSION = os.getenv("FB_GRAPH_VERSION", "v23.0")
 PAGE_ID = os.getenv("EXPECTED_FB_PAGE_ID", "1345909531941708").strip()
 TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN", "")
 ROOT = Path(__file__).resolve().parents[1]
-POSTER = ROOT / "downloaded-artifact" / "artifacts" / "child_hope_research_poster.png"
-CAPTION_FILE = ROOT / "downloaded-artifact" / "artifacts" / "poster_caption.txt"
+POSTER = ROOT / "downloaded-artifact" / "child_hope_research_poster.png"
+CAPTION_FILE = ROOT / "downloaded-artifact" / "poster_caption.txt"
 REPORT = ROOT / "facebook_research_poster_receipt.md"
 
 def sha256_file(path):
