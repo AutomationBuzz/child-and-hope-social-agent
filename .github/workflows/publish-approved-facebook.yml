@@ -48,7 +48,7 @@ jobs:
           OPENAI_MODEL: "gpt-4.1-mini"
           EXPECTED_FB_PAGE_ID: "1345909531941708"
           AUTO_PUBLISH: "true"
-          APPROVED_CONTENT_SHA256: ${{ vars.APPROVED_CONTENT_SHA256 }}
+          APPROVED_CONTENT_SHA256: "5aeb0caed2c84129cf6a44544e8a0c793b578a43c4eb610f74bcc9f9f6fc1016"
         run: python src/orchestrator_agent.py
 
       - name: Upload publication report
