@@ -1,0 +1,76 @@
+name: CHILD & HOPE - Agentic CI Monitor and Recovery
+
+on:
+  workflow_run:
+    workflows:
+      - "CHILD & HOPE - Repository Validation"
+      - "CHILD & HOPE - Research to Poster"
+      - "CHILD & HOPE - Research Reel Draft"
+      - "CHILD & HOPE - Publish Reviewed Research Poster"
+      - "CHILD & HOPE - Publish Reviewed Research Reel"
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: child-hope-agentic-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Report failing workflow context
+        id: context
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## CHILD & HOPE CI incident"
+            echo ""
+            echo "- Trigger: $EVENT_NAME"
+            echo "- Workflow: ${RUN_NAME:-manual diagnostic}"
+            echo "- Conclusion: ${CONCLUSION:-diagnostic requested}"
+            echo "- Branch: ${HEAD_BRANCH:-unknown}"
+            echo "- Run: ${RUN_URL:-not applicable}"
+            echo ""
+            echo "### Next diagnostic step"
+            echo "Inspect the failed run's job logs, reproduce the failure in a test environment, patch only a demonstrated defect, and rerun validation. Do not retry publication automatically unless the publisher proves the prior request was not accepted."
+          } > incident-report.md
+          cat incident-report.md
+
+      - name: Upload incident report
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-hope-agentic-incident-report
+          path: incident-report.md
+          retention-days: 30
+
+      - name: Open incident issue for actionable failure
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          title="[CI incident] ${RUN_NAME} failed (run ${RUN_ID})"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json title --jq '.[].title' | grep -Fxq "$title"; then
+            echo "An open incident already exists; not creating a duplicate."
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "Automated incident created after a workflow failure.\n\nRun: $RUN_URL\n\nInspect the job logs, identify a reproducible root cause, implement a minimal tested fix, and verify the pipeline. Publishing workflows must not be blindly retried because Meta may have accepted a request even if the client timed out."
+          fi
