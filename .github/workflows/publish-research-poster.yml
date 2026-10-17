@@ -1,0 +1,69 @@
+name: CHILD & HOPE - Publish Reviewed Research Poster
+
+on:
+  workflow_dispatch:
+    inputs:
+      research_run_id:
+        description: "Run ID of the reviewed Research to Poster workflow artifact"
+        required: true
+        type: string
+      confirm_publish:
+        description: "Choose yes only after reviewing the poster and its source report"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: child-hope-research-poster-publish
+  cancel-in-progress: false
+
+jobs:
+  publish-reviewed-poster:
+    if: ${{ inputs.confirm_publish == 'yes' }}
+    runs-on: ubuntu-latest
+    environment: facebook-production
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Download reviewed poster artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: child-hope-research-poster-draft
+          run-id: ${{ inputs.research_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: downloaded-artifact
+      - name: Publish reviewed poster to Facebook
+        env:
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          EXPECTED_FB_PAGE_ID: "1345909531941708"
+          FB_GRAPH_VERSION: "v23.0"
+        run: python src/publish_research_poster.py
+      - name: Upload publication receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: child-hope-research-poster-publication-receipt
+          path: facebook_research_poster_receipt.md
+          if-no-files-found: ignore
+          retention-days: 90
+  skipped-without-confirmation:
+    if: ${{ inputs.confirm_publish != 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep publication disabled
+        run: echo "Publication was not confirmed. No Facebook post was published."
