@@ -12,6 +12,7 @@ MISSION_FILE = ROOT / "content" / "mission.md"
 APPROVED_FILE = ROOT / "content" / "approved_caption.txt"
 STATE_FILE = ROOT / "state" / "published_hashes.json"
 DRAFT_FILE = ROOT / "draft_caption.txt"
+PUBLISH_REPORT = ROOT / "facebook_publish_report.md"
 
 GRAPH_VERSION = os.getenv("FB_GRAPH_VERSION", "v23.0")
 EXPECTED_PAGE_ID = os.getenv("EXPECTED_FB_PAGE_ID", "61595341701921").strip()
@@ -115,9 +116,42 @@ def main() -> None:
     if not post_id:
         raise RuntimeError(f"Meta response did not include a post ID: {result}")
 
+    # Verify the returned post object and request a permalink when Meta permits it.
+    permalink = ""
+    try:
+        verify_response = requests.get(
+            f"https://graph.facebook.com/{GRAPH_VERSION}/{post_id}",
+            params={"fields": "id,permalink_url", "access_token": token},
+            timeout=30,
+        )
+        if verify_response.ok:
+            verified = verify_response.json()
+            if str(verified.get("id", "")) == str(post_id):
+                permalink = str(verified.get("permalink_url", "") or "")
+    except requests.RequestException:
+        # A successful publish response with a post ID remains the primary receipt.
+        pass
+
     state.setdefault("published_hashes", []).append(digest)
     STATE_FILE.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    report_lines = [
+        "# CHILD & HOPE Facebook Publication Receipt",
+        "",
+        "- Status: PUBLISHED (Meta returned a post ID)",
+        f"- Page: {page.get('name', 'configured Page')}",
+        f"- Page ID: {EXPECTED_PAGE_ID}",
+        f"- Post ID: {post_id}",
+        f"- Caption SHA-256: {digest}",
+        f"- Permalink: {permalink or 'Meta did not return a permalink; use the post ID to locate the post.'}",
+        "",
+        "The exact approved caption was submitted to the configured Facebook Page.",
+        "A workflow start or draft is not proof of publication; the post ID above is the publication receipt.",
+        "",
+    ]
+    PUBLISH_REPORT.write_text("\n".join(report_lines), encoding="utf-8")
     print(f"Published successfully to {page.get('name', 'configured Page')}; post ID: {post_id}")
+    print(f"Facebook permalink: {permalink or 'not returned by Meta'}")
+    print(f"Publication receipt written: {PUBLISH_REPORT.name}")
 
 
 if __name__ == "__main__":
